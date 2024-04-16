@@ -26,6 +26,7 @@ import { db } from "../firebase";
 const CounterDash = () => {
   const [userData, setUserData] = useState([]);
   const [selectedRecords, setSelectedRecords] = useState([]);
+  const [visitedRecords, setVisitedRecords] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,12 +108,39 @@ const CounterDash = () => {
     }
   };
 
+  useEffect(() => {
+    const fetchVisitedData = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "visited"));
+        const visitedData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setVisitedRecords(visitedData);
+      } catch (error) {
+        console.error("Error fetching visited data: ", error);
+      }
+    };
+
+    fetchVisitedData();
+
+    const unsubscribeVisited = onSnapshot(
+      collection(db, "visited"),
+      (snapshot) => {
+        const updatedVisitedData = snapshot.docs.map((doc) => doc.data());
+        setVisitedRecords(updatedVisitedData);
+      }
+    );
+
+    return () => unsubscribeVisited(); // Unsubscribe when component unmounts
+  }, []);
+
   return (
     <div className="md:mx-64 mx-2 md:py-10 py-5 flex flex-col min-h-dvh">
       <Navbar />
       <div className="flex flex-1 justify-center flex-wrap">
         <div className="flex flex-col items-center justify-center p-10 py-5 gap-4 w-full">
-          <h2 className="font-semibold md:text-xl">Queue Details </h2>
+          <h2 className="font-semibold md:text-xl">Queue Details</h2>
           <Table aria-label="Example static collection table">
             <TableHeader>
               <TableColumn>Sl. no.</TableColumn>
@@ -148,6 +176,35 @@ const CounterDash = () => {
             </TableBody>
           </Table>
           <Button onClick={handleSaveButtonClick}>Save</Button>
+          <h2 className="font-semibold md:text-xl mt-5">Visited List</h2>
+          <Table aria-label="Example static collection table">
+            <TableHeader>
+              <TableColumn>Sl. no.</TableColumn>
+              <TableColumn>Name</TableColumn>
+              <TableColumn>Phone</TableColumn>
+              <TableColumn>Date</TableColumn>
+              <TableColumn>Reason for Visit</TableColumn>
+              <TableColumn>Token No</TableColumn>
+            </TableHeader>
+            <TableBody>
+              {visitedRecords.map((record, index) => {
+                return (
+                  <TableRow key={record.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{record.name}</TableCell>
+                    <TableCell>{record.phone}</TableCell>
+                    <TableCell>
+                      {record.date
+                        ? record.date.toDate().toLocaleString()
+                        : ""}
+                    </TableCell>
+                    <TableCell>{record.service}</TableCell>
+                    <TableCell>{record.token}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

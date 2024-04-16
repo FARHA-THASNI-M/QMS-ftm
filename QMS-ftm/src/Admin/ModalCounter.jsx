@@ -1,25 +1,16 @@
-//modalCounter
-
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  useDisclosure,
-  Input,
-  Select,
-  SelectItem,
-} from "@nextui-org/react";
-import { useState } from "react";
+// ModalCounter.jsx
+import React, { useState } from 'react';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Select, SelectItem } from "@nextui-org/react";
 import { v4 as uuidv4 } from "uuid";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { hash } from "bcryptjs";
 
-export default function App() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+const ModalCounter = ({ isOpen, onClose }) => {
+  const [counterName, setCounterName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [service, setService] = useState("");
   const services = [
     "Personal Service (Income, Community, Nativity, etc)",
     "Home related Service",
@@ -28,35 +19,23 @@ export default function App() {
     "Other Services",
   ];
 
-  const [userName, setUserName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [service, setService] = useState("");
-
   const handleSubmit = async () => {
     try {
-      // Generate a unique ID for the entry
       const id = uuidv4();
-
-      // Hash the password
       const hashedPassword = await hash(password, 10);
-      console.log(id, userName, email, hashedPassword, service);
-      // Add the data to the 'counter' collection in Firestore
+
       await addDoc(collection(db, "counter"), {
         id,
-        userName,
+        counterName,
         email,
         password: hashedPassword,
         service,
       });
 
-      // Clear form fields after submission
-      setUserName("");
+      setCounterName("");
       setEmail("");
       setPassword("");
       setService("");
-
-      // Close the modal
       onClose();
     } catch (error) {
       console.error("Error adding document: ", error);
@@ -68,54 +47,51 @@ export default function App() {
   };
 
   return (
-    <>
-      <Button onPress={onOpen} className="bg-[#6236F5] text-white">
-        Add Counter
-      </Button>
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">Add Counter</ModalHeader>
-          <ModalBody>
-            <Input
-              type="text"
-              label="User Name"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-            />
-            <Input
-              type="email"
-              label="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Input
-              type="password"
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Select
-              label="Select your Reason to be here"
-              onChange={handleServiceChange}
-              required
-            >
-              {services.map((item) => (
-                <SelectItem className="font-[Outfit]" value={item} key={item}>
-                  {item}
-                </SelectItem>
-              ))}
-            </Select>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
-              Close
-            </Button>
-            <Button color="primary" onPress={handleSubmit}>
-              Submit
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </>
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-1">Add Counter</ModalHeader>
+        <ModalBody>
+          <Input
+            type="text"
+            label="Counter Name"
+            value={counterName}
+            onChange={(e) => setCounterName(e.target.value)}
+          />
+          <Input
+            type="email"
+            label="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            type="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <Select
+            label="Select your Reason to be here"
+            onChange={handleServiceChange}
+            required
+          >
+            {services.map((item) => (
+              <SelectItem className="font-[Outfit]" value={item} key={item}>
+                {item}
+              </SelectItem>
+            ))}
+          </Select>
+        </ModalBody>
+        <ModalFooter>
+          <Button color="danger" variant="light" onPress={onClose}>
+            Close
+          </Button>
+          <Button color="primary" onPress={handleSubmit}>
+            Submit
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
-}
+};
+
+export default ModalCounter;
