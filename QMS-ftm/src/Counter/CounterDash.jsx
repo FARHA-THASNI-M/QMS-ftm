@@ -175,7 +175,7 @@ const CounterDash = () => {
               })}
             </TableBody>
           </Table>
-          <Button onClick={handleSaveButtonClick}>Save</Button>
+          <Button onClick={handleSaveButtonClick} className="bg-[#6236F5] text-white">Save</Button>
           <h2 className="font-semibold md:text-xl mt-5">Visited List</h2>
           <Table aria-label="Example static collection table">
             <TableHeader>
