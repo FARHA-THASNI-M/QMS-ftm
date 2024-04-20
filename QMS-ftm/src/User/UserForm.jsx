@@ -12,7 +12,7 @@ import {
   SelectItem,
 } from "@nextui-org/react";
 import Navbar from "../Components/Navbar";
-import { collection, getDocs, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, doc as firestoreDoc, setDoc, getDoc } from "firebase/firestore";
 import { db, submitDataToFirestore } from "../firebase";
 import { v4 as uuidv4 } from 'uuid';
 import { PDFDocument, rgb } from 'pdf-lib';
@@ -22,6 +22,8 @@ export default function UserForm() {
   const [phone, setPhone] = useState("");
   const [service, setService] = useState("");
   const [userData, setUserData] = useState([]);
+  const [lastTokenNumber, setLastTokenNumber] = useState(0);
+  const [counters, setCounters] = useState([]);
 
   const handleNameChange = (event) => {
     setName(event.target.value);
@@ -36,6 +38,56 @@ export default function UserForm() {
   };
 
   const services = ['Personal Service (Income, Community, Nativity, etc)', 'Home related Service', 'Land Related Service', 'Education Related Service', 'Other Services'];
+
+  useEffect(() => {
+    const fetchLastTokenNumber = async () => {
+      try {
+        const tokenDocRef = firestoreDoc(db, "tokens", "lastToken");
+        const tokenDocSnap = await getDoc(tokenDocRef);
+        const lastToken = tokenDocSnap.exists() ? parseInt(tokenDocSnap.data().lastTokenNumber) || 0 : 0;
+        setLastTokenNumber(lastToken);
+      } catch (error) {
+        console.error("Error fetching last token number: ", error);
+      }
+    };
+
+    fetchLastTokenNumber();
+  }, []);
+
+  useEffect(() => {
+    const fetchCounters = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "counter"));
+        const countersData = querySnapshot.docs.map((doc) => doc.data());
+        setCounters(countersData);
+      } catch (error) {
+        console.error("Error fetching counters: ", error);
+      }
+    };
+
+    fetchCounters();
+  }, []);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "requests"));
+        const requestsData = querySnapshot.docs.map((doc) => doc.data());
+        setUserData(requestsData);
+      } catch (error) {
+        console.error("Error fetching requests: ", error);
+      }
+    };
+
+    const unsubscribeRequests = onSnapshot(collection(db, "requests"), (snapshot) => {
+      const requestsData = snapshot.docs.map((doc) => doc.data());
+      setUserData(requestsData);
+    });
+
+    return () => {
+      unsubscribeRequests();
+    };
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -54,58 +106,21 @@ export default function UserForm() {
       return;
     }
 
-    let counter = '';
-    let tokenPrefix = '';
-    let tokenNumber = '';
-
-    switch (service) {
-      case 'Personal Service (Income, Community, Nativity, etc)':
-      case 'Education Related Service':
-        counter = 'Counter 1';
-        tokenPrefix = 'A';
-        break;
-      case 'Home related Service':
-      case 'Land Related Service':
-        counter = 'Counter 2';
-        tokenPrefix = 'B';
-        break;
-      case 'Other Services':
-        counter = 'Counter 3';
-        tokenPrefix = 'C';
-        break;
-      default:
-        counter = 'Counter 3';
-        tokenPrefix = 'C';
-        break;
-    }
-
     try {
-      const collectionName = 'requests';
-      const querySnapshot = await getDocs(collection(db, collectionName));
-      const usersInCounter = querySnapshot.docs.filter(doc => doc.data().counter === counter);
-
-      if (usersInCounter.length > 0) {
-        const lastTokenNumber = usersInCounter.reduce((max, doc) => {
-          const currentTokenNumber = parseInt(doc.data().token.replace(tokenPrefix, ''));
-          return currentTokenNumber > max ? currentTokenNumber : max;
-        }, 0);
-        tokenNumber = tokenPrefix + (lastTokenNumber + 1);
-      } else {
-        tokenNumber = tokenPrefix + 1;
-      }
+      // Generate the token number
+      const tokenNumber = await generateTokenNumber();
 
       const userId = uuidv4();
-      await submitDataToFirestore(collectionName, {
+      await submitDataToFirestore('requests', {
         id: userId,
         name: name,
         phone: phone,
         service: service,
-        counter: counter,
-        token: tokenNumber
+        counter: tokenNumber.counter,
+        token: tokenNumber.token
       });
 
-      // Generate PDF with token number
-      generatePDF(tokenNumber);
+      generatePDF(tokenNumber.token);
 
       setName("");
       setPhone("");
@@ -118,21 +133,21 @@ export default function UserForm() {
   const generatePDF = async (userTokenNumber) => {
     try {
       const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([612, 472]); 
+      const page = pdfDoc.addPage([612, 472]);
       const { width, height } = page.getSize();
-      const fontSize = 19.2; // 20% smaller font size
+      const fontSize = 19.2;
       const textHeight = fontSize + 10;
 
-      // Draw header
       page.drawText("Queue Management System by Tecnavis", {
-        x: width /2 - 200, // Adjust as needed
-        y: height - 100, // Adjust as needed
-        size: 24, // Adjust as needed
+        x: width / 2 - 200,
+        y: height - 100,
+        size: 24,
         color: rgb(0, 0, 0),
       });
 
-      // Draw token number
-      page.drawText(userTokenNumber, {
+      const tokenString = userTokenNumber.toString();
+
+      page.drawText(tokenString, {
         x: width / 2 - 40,
         y: height / 2,
         size: 35,
@@ -151,49 +166,27 @@ export default function UserForm() {
       console.error("Error generating PDF: ", error);
     }
   };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "requests"));
-        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setUserData(data);
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-      }
-    };
-
-    fetchData();
-
-    const unsubscribe = onSnapshot(collection(db, "requests"), (snapshot) => {
-      const updatedData = snapshot.docs.map((doc) => doc.data());
-      const uniqueCounters = Array.from(new Set(updatedData.map(user => user.counter)));
-      const usersPerCounter = uniqueCounters.reduce((acc, counter) => {
-        const userInCounter = updatedData.find(user => user.counter === counter);
-        if (userInCounter) acc.push(userInCounter);
-        return acc;
-      }, []);
-      setUserData(usersPerCounter);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const handleRemoveUser = async (id) => {
+  // Inside generateTokenNumber function
+  const generateTokenNumber = async () => {
     try {
-      await db.collection("requests").doc(id).delete();
-      const updatedData = await getDocs(collection(db, "requests"), orderBy("date", "desc"));
-      const uniqueCounters = Array.from(new Set(updatedData.docs.map(doc => doc.data().counter)));
-      const usersPerCounter = uniqueCounters.reduce((acc, counter) => {
-        const userInCounter = updatedData.docs.find(doc => doc.data().counter === counter);
-        if (userInCounter) acc.push(userInCounter.data());
-        return acc;
-      }, []);
-      setUserData(usersPerCounter);
+      // Increment the last token number by 1
+      const newTokenNumber = lastTokenNumber + 1;
+
+      // Randomly select a counter from the counters array
+      const randomCounterIndex = Math.floor(Math.random() * counters.length);
+      const randomCounter = counters[randomCounterIndex].counterName;
+
+      // Update the last token number in the "tokens" collection
+      const tokenDocRef = firestoreDoc(db, "tokens", "lastToken");
+      await setDoc(tokenDocRef, { lastTokenNumber: newTokenNumber.toString() }, { merge: true });
+
+      return { token: newTokenNumber.toString(), counter: randomCounter };
     } catch (error) {
-      console.error("Error removing document: ", error);
+      console.error("Error generating token number: ", error);
+      return "";
     }
   };
+
 
   return (
     <div className="md:mx-64 mx-2 md:py-10 py-5 flex flex-col min-h-dvh">
