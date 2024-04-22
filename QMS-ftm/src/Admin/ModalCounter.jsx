@@ -1,109 +1,117 @@
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@nextui-org/react";
-import { useState, useEffect } from "react";
-import { collection, getDocs, onSnapshot, deleteDoc, doc } from "firebase/firestore";
-import { db } from "../firebase";
+//modalCounter
+
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  useDisclosure,
+  Input,
+  Select,
+  SelectItem,
 } from "@nextui-org/react";
+import { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { hash } from "bcryptjs";
 
-export default function ManageCounterModal({ onClose }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [counters, setCounters] = useState([]);
+export default function App() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const services = [
+    "Personal Service (Income, Community, Nativity, etc)",
+    "Home related Service",
+    "Land Related Service",
+    "Education Related Service",
+    "Other Services",
+  ];
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "counter"));
-        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setCounters(data);
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-      }
-    };
+  const [counterName, setCounterName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [service, setService] = useState("");
 
-    fetchData();
-    const unsubscribe = onSnapshot(collection(db, "counter"), (snapshot) => {
-      const updatedData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setCounters(updatedData);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const handleOpenModal = () => {
-    setIsOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsOpen(false);
-    onClose();
-  };
-
-  const handleDeleteCounter = async (counterId) => {
+  const handleSubmit = async () => {
     try {
-      console.log("CounterId:", counterId);
+      // Generate a unique ID for the entry
+      const id = uuidv4();
 
-      // Construct a reference to the specific document using the counter's id
-      const counterRef = doc(db, "counter", counterId);
+      // Hash the password
+      const hashedPassword = await hash(password, 10);
+      console.log(id, counterName, email, hashedPassword, service);
+      // Add the data to the 'counter' collection in Firestore
+      await addDoc(collection(db, "counter"), {
+        id,
+        counterName,
+        email,
+        password: hashedPassword,
+        service,
+      });
 
-      // Delete the document from the Firestore database
-      await deleteDoc(counterRef);
-      console.log("Counter deleted successfully from the database");
+      // Clear form fields after submission
+      setCounterName("");
+      setEmail("");
+      setPassword("");
+      setService("");
 
-      // Update the UI by removing the deleted document from the counters array
-      setCounters((prevCounters) => prevCounters.filter((item) => item.id !== counterId));
+      // Close the modal
+      onClose();
     } catch (error) {
-      console.error("Error deleting counter: ", error);
+      console.error("Error adding document: ", error);
     }
   };
 
-  const handleEditCounter = (counterId) => {
-    // Add your logic for editing counter here
-    console.log("Editing counter with id:", counterId);
+  const handleServiceChange = (event) => {
+    setService(event.target.value);
   };
 
   return (
     <>
-      <Button onPress={handleOpenModal} className="bg-[#6236F5] text-white">
-        Manage Counter
+      <Button onPress={onOpen} className="bg-[#6236F5] text-white">
+        Add Counter
       </Button>
-      <Modal isOpen={isOpen} onClose={handleCloseModal}>
+      <Modal isOpen={isOpen} onClose={onClose}>
         <ModalContent>
-          <ModalHeader>Manage Counters</ModalHeader>
+          <ModalHeader className="flex flex-col gap-1">Add Counter</ModalHeader>
           <ModalBody>
-            <Table aria-label="Example static collection table">
-              <TableHeader>
-                <TableColumn>Sl.no</TableColumn>
-                <TableColumn>Counter Name</TableColumn>
-                <TableColumn>Actions</TableColumn>
-              </TableHeader>
-              <TableBody>
-                {counters.filter((counter) => counter.counterName).map((counter, index) => (
-                  <TableRow key={counter.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{counter.counterName}</TableCell>
-                    <TableCell>
-                      <Button onClick={() => handleEditCounter(counter.id)}>Edit</Button>
-                      <Button
-                        className="bg-red-500 ml-4"
-                        onClick={() => handleDeleteCounter(counter.id)}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <Input
+              type="text"
+              label="Counter Name"
+              value={counterName}
+              onChange={(e) => setCounterName(e.target.value)}
+            />
+            <Input
+              type="email"
+              label="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Input
+              type="password"
+              label="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Select
+              label="Select your Reason to be here"
+              onChange={handleServiceChange}
+              required
+            >
+              {services.map((item) => (
+                <SelectItem className="font-[Outfit]" value={item} key={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </Select>
           </ModalBody>
           <ModalFooter>
-            <Button color="primary" onClick={handleCloseModal}>
+            <Button color="danger" variant="light" onPress={onClose}>
               Close
+            </Button>
+            <Button color="primary" onPress={handleSubmit}>
+              Submit
             </Button>
           </ModalFooter>
         </ModalContent>
