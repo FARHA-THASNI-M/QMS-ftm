@@ -1,37 +1,32 @@
-import { useState } from "react";
-import Navbar from "./Navbar";
-import { signIn } from "../firebase";
-import { Card, CardHeader, CardBody, Input, Button } from "@nextui-org/react";
-import AdminDash from "../Admin/AdminDash"
-import CounterDash from "../Counter/CounterDash"
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signIn } from '../firebase';
+import { Card, CardHeader, CardBody, Input, Button } from '@nextui-org/react';
+import Navbar from './Navbar';
 
-const Login = () => {
+const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-  const [loggedInAs, setLoggedInAs] = useState(null);
+  const navigate = useNavigate(); // To navigate to different routes after login
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const role = await signIn(email, password);
-      if (role === "admin") {
-        setLoggedInAs("admin");
-      } else if (role === "counter") {
-        setLoggedInAs("counter");
+      if (role === 'admin') {
+        onLogin(role); // Update the state
+        navigate('/admin'); // Redirect to admin dashboard
+      } else if (role === 'counter') {
+        onLogin(role); // Update the state
+        navigate('/counter'); // Redirect to counter dashboard
       } else {
-        setError("Unauthorized access");
+        setError('Unauthorized access');
       }
     } catch (error) {
       setError(error.message);
     }
   };
-  if (loggedInAs === "admin") {
-    return <AdminDash />;
-  } else if (loggedInAs === "counter") {
-    return <CounterDash />;
-
-  }
 
   return (
     <div className="md:mx-64 mx-2 md:py-10 py-5 flex flex-col min-h-dvh min-w-screen">
@@ -41,13 +36,13 @@ const Login = () => {
           <CardHeader className="justify-center">
             <h2 className="font-semibold">Please Login Here</h2>
           </CardHeader>
-          <form action="post" onSubmit={handleLogin}>
+          <form onSubmit={handleLogin}>
             <CardBody className="gap-5">
               <Input
                 type="email"
                 label="Email"
                 value={email}
-                autoComplete='off'
+                autoComplete="off"
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
@@ -55,14 +50,15 @@ const Login = () => {
                 type="password"
                 label="Password"
                 value={password}
-                id="password"
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
               {error && <p className="text-red-500 text-xs italic">{error}</p>}
-              <Button className="bg-[#6236F5] text-white" type="submit">Submit</Button>
+              <Button className="bg-[#6236F5] text-white" type="submit">
+                Submit
+              </Button>
             </CardBody>
-          </form >
+          </form>
         </Card>
       </div>
     </div>
