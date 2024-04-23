@@ -11,6 +11,7 @@ import Login from './login/Login';
 import AdminDash from './Admin/AdminDash';
 import './index.css';
 import CounterDash from './Counter/CounterDash';
+import UserForm from './User/UserForm'
 import App from './App';
 
 // This component will check if a user is authenticated and has the correct role
@@ -42,6 +43,10 @@ const AppRouter = () => {
     {
       path: '/',
       element: <App />,
+    },
+    {
+      path: '/userForm',
+      element: <UserForm />,
     },
     {
       path: '/login',
