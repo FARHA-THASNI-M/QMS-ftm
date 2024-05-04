@@ -28,6 +28,7 @@ const firebaseConfig = {
   appId: "1:810346611864:web:e871a1c246a6e9d9a6fced",
 
   measurementId: "G-GD8L44Y0LM",
+
 };
 
 // Initialize Firebase
@@ -51,7 +52,6 @@ const submitDataToFirestore = async (collectionName, data) => {
 
 
 const signIn = async (email, password) => {
-  try {
     await signInWithEmailAndPassword(auth, email, password);
     const isAdmin = email === "admin@tecnavis.com";
     const isCounter = email.startsWith("counter@tecnavis.com");
@@ -63,9 +63,6 @@ const signIn = async (email, password) => {
     } else {
       throw new Error("Invalid input");
     }
-  } catch (error) {
-    throw error;
-  }
 };
 
 const signOutUser = async () => {
@@ -77,3 +74,4 @@ const signOutUser = async () => {
   }
 };
 export { auth, db, submitDataToFirestore, signIn, signOutUser };
+ 
