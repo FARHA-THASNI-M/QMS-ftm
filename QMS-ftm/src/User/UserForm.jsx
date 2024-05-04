@@ -24,7 +24,7 @@ export default function UserForm() {
   const [userData, setUserData] = useState([]);
   const [counter, setCounter] = useState([]);
   const [lastTokenNumbers, setLastTokenNumbers] = useState({
-    "Counter 1": 0,
+    "Counter 1": 0, 
     "Counter 2": 0,
     "Counter 3": 0,
     "Counter 4": 0,
