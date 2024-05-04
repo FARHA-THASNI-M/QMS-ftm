@@ -9,7 +9,7 @@ import {
 
 export default function App() {
   return (
-    <Navbar>
+    <Navbar position="sticky">
       <NavbarContent>
       <NavbarBrand>
           <p className="font-bold text-inherit sm:hidden">QMS</p>
@@ -27,6 +27,15 @@ export default function App() {
             variant="flat"
           >
             Book your slot
+          </Button>
+        </NavbarItem>
+        <NavbarItem>
+        <Button
+          as={Link}
+          className="bg-[#6236F5] text-white"
+          href="/login"
+          variant="flat">
+            Login
           </Button>
         </NavbarItem>
       </NavbarContent>
